@@ -26,7 +26,7 @@ pipeline {
 
         stage('Compilar Proyecto') {
             steps {
-                sh 'mvn clean package -DskipTests=true'
+                sh 'mvn clean package -Dmaven.test.skip=true'
             }
         }
 
