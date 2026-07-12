@@ -1,4 +1,5 @@
 pipeline {
+
     agent any
 
     environment {
@@ -26,20 +27,32 @@ pipeline {
 
         stage('Compilar Proyecto') {
             steps {
-                sh 'mvn clean package -Dmaven.test.skip=true'
+                sh 'mvn clean package -DskipTests'
             }
         }
 
         stage('Verificar WAR generado') {
             steps {
-                sh 'echo "Contenido carpeta target:"'
-                sh 'ls -lah target'
+                sh '''
+                echo "Contenido de target:"
+                ls -lah target
+                '''
+            }
+        }
+
+        stage('Eliminar Imagen Anterior') {
+            steps {
+                sh '''
+                docker rmi ${IMAGE_NAME}:latest || true
+                '''
             }
         }
 
         stage('Construir Imagen Docker') {
             steps {
-                sh 'docker build -t ${IMAGE_NAME}:latest .'
+                sh '''
+                docker build -t ${IMAGE_NAME}:latest .
+                '''
             }
         }
 
@@ -56,40 +69,46 @@ pipeline {
             steps {
                 sh '''
                 docker run -d \
-                --name ${CONTAINER_NAME} \
-                -p 9090:8080 \
-                ${IMAGE_NAME}:latest
+                    --name ${CONTAINER_NAME} \
+                    -p 9090:8080 \
+                    ${IMAGE_NAME}:latest
                 '''
             }
         }
 
-        stage('Verificar Contenedor') {
+        stage('Verificar Despliegue') {
             steps {
-                sh 'docker ps'
+                sh '''
+                echo "===== CONTENEDORES ====="
+                docker ps
+
+                echo ""
+                echo "===== IMAGENES ====="
+                docker images
+                '''
             }
         }
-
     }
 
     post {
 
         success {
-            echo '======================================='
-            echo ' Pipeline ejecutado correctamente'
-            echo ' Aplicación desplegada en Docker'
-            echo '======================================='
+            echo '============================================='
+            echo 'PIPELINE FINALIZADO CORRECTAMENTE'
+            echo 'La aplicación fue desplegada en Docker.'
+            echo 'Swagger: http://IP_PUBLICA_EC2:9090/vehiculosBuild/swagger-ui/index.html'
+            echo '============================================='
         }
 
         failure {
-            echo '======================================='
-            echo ' El Pipeline falló'
-            echo ' Revisar Console Output'
-            echo '======================================='
+            echo '============================================='
+            echo 'PIPELINE FALLÓ'
+            echo 'Revisar el Console Output.'
+            echo '============================================='
         }
 
         always {
-            sh 'docker images'
+            sh 'docker ps -a'
         }
-
     }
 }
